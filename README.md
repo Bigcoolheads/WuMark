@@ -118,4 +118,4 @@ WuMark/
 
 ## License
 
-[MIT License](LICENSE) © 2026 [wushaozhi](https://github.com/wushaozhi)
+[MIT License](LICENSE) © 2026 [wushaozhi](https://github.com/Bigcoolheads)
