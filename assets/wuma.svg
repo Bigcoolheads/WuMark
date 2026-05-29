@@ -1,0 +1,34 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 背景深空蓝 -->
+    <linearGradient id="bgGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    
+    <!-- M到W的流光渐变：上半部青色(代码)，下半部亮白(渲染) -->
+    <linearGradient id="mwGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="50%" stop-color="#22D3EE"/>
+      <stop offset="51%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+
+    <filter id="glow1" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#22D3EE" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- 圆角背景 -->
+  <rect width="256" height="256" rx="48" fill="url(#bgGrad1)"/>
+
+  <!-- M与W交织的连续线条 -->
+  <path 
+    d="M 40 70 L 128 150 L 216 70 L 216 186 L 128 106 L 40 186 Z" 
+    stroke="url(#mwGrad)" 
+    stroke-width="26" 
+    stroke-linejoin="round" 
+    fill="none"
+    filter="url(#glow1)"
+  />
+</svg>

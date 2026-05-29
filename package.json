@@ -1,0 +1,59 @@
+{
+  "name": "wumark",
+  "version": "1.0.0",
+  "description": "WuMark - 无码，无干扰的极简Markdown编辑器",
+  "author": "wushaozhi",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "dist": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.wumark.editor",
+    "productName": "WuMark",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "main.js",
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "assets/wuma.png",
+      "signAndEditExecutable": false,
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "WuMark",
+          "description": "无码Markdown编辑器",
+          "role": "Editor"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "WuMark.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "highlight.js": "^11.10.0",
+    "marked": "^15.0.0"
+  }
+}

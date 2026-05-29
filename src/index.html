@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: file:;">
+  <title>WuMark - 无码Markdown编辑器</title>
+  <link rel="stylesheet" href="styles/editor.css">
+  <link rel="stylesheet" href="styles/markdown.css">
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="bold" title="粗体 Ctrl+B"><strong>B</strong></button>
+        <button class="tool-btn" data-cmd="italic" title="斜体 Ctrl+I"><em>I</em></button>
+        <button class="tool-btn" data-cmd="strikethrough" title="删除线"><s>S</s></button>
+        <button class="tool-btn" data-cmd="code" title="行内代码">&lt;/&gt;</button>
+      </div>
+      <div class="divider"></div>
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="h1" title="标题1">H1</button>
+        <button class="tool-btn" data-cmd="h2" title="标题2">H2</button>
+        <button class="tool-btn" data-cmd="h3" title="标题3">H3</button>
+      </div>
+      <div class="divider"></div>
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="ul" title="无序列表">•</button>
+        <button class="tool-btn" data-cmd="ol" title="有序列表">1.</button>
+        <button class="tool-btn" data-cmd="task" title="任务列表">☐</button>
+        <button class="tool-btn" data-cmd="quote" title="引用">❝</button>
+        <button class="tool-btn" data-cmd="codeblock" title="代码块">{ }</button>
+      </div>
+      <div class="divider"></div>
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="link" title="链接">🔗</button>
+        <button class="tool-btn" data-cmd="image" title="图片">🖼</button>
+      </div>
+      <div class="divider"></div>
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="hr" title="分割线">—</button>
+        <button class="tool-btn" data-cmd="table" title="表格">⊞</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="divider"></div>
+      <div class="toolbar-group view-toggle">
+        <button class="tool-btn active" data-cmd="view-split" title="双栏模式">◫</button>
+        <button class="tool-btn" data-cmd="view-edit" title="编辑模式">✎</button>
+        <button class="tool-btn" data-cmd="view-preview" title="预览模式">◉</button>
+      </div>
+    </div>
+
+    <div id="main-content">
+      <div id="editor-pane">
+        <textarea id="editor" placeholder="在此输入 Markdown..."></textarea>
+      </div>
+      <div id="resizer"></div>
+      <div id="preview-pane">
+        <div id="preview" class="markdown-body"></div>
+      </div>
+    </div>
+
+    <div id="statusbar">
+      <span id="status-file">未命名.md</span>
+      <span class="status-separator">|</span>
+      <span id="status-words">单词: 0</span>
+      <span class="status-separator">|</span>
+      <span id="status-lines">行: 1, 列: 1</span>
+      <span class="status-separator">|</span>
+      <span id="status-autosave"></span>
+      <span class="status-separator">|</span>
+      <span id="status-encoding">UTF-8</span>
+      <span class="status-separator">|</span>
+      <span id="status-modified"></span>
+    </div>
+  </div>
+
+  <div id="modal-overlay" class="modal-overlay" style="display:none">
+    <div class="modal-dialog">
+      <div class="modal-title">WuMark</div>
+      <div class="modal-body" id="modal-text"></div>
+      <div class="modal-buttons" id="modal-buttons"></div>
+    </div>
+  </div>
+
+  <script src="renderer/parser.js"></script>
+  <script src="renderer/app.js"></script>
+</body>
+</html>
