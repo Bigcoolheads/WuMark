@@ -1,6 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, shell, clipboard, nativeImage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell, clipboard, nativeImage, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+let recentFiles = loadRecentFiles();
 
 let mainWindow;
 let forceClose = false;
@@ -62,6 +64,26 @@ function getConfigPath() {
   return path.join(app.getPath('userData'), 'window-bounds.json');
 }
 
+function getRecentPath() {
+  return path.join(app.getPath('userData'), 'recent-files.json');
+}
+
+function loadRecentFiles() {
+  try {
+    return JSON.parse(fs.readFileSync(getRecentPath(), 'utf-8'));
+  } catch { return []; }
+}
+
+function saveRecentFiles() {
+  try {
+    fs.writeFileSync(getRecentPath(), JSON.stringify(recentFiles), 'utf-8');
+  } catch {}
+}
+
+function getThemeConfigPath() {
+  return path.join(app.getPath('userData'), 'theme.json');
+}
+
 function buildMenu() {
   const template = [
     {
@@ -95,6 +117,11 @@ function buildMenu() {
           label: '另存为...',
           accelerator: 'CmdOrCtrl+Shift+S',
           click: () => mainWindow.webContents.send('menu:saveAs'),
+        },
+        {
+          label: '关闭文件',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => mainWindow.webContents.send('menu:closeFile'),
         },
         { type: 'separator' },
         {
@@ -142,6 +169,12 @@ function buildMenu() {
           click: () => mainWindow.webContents.send('view:split'),
         },
         { type: 'separator' },
+        {
+          label: '切换浅色/深色模式',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: () => mainWindow.webContents.send('menu:toggleTheme'),
+        },
+        { type: 'separator' },
         { role: 'togglefullscreen', label: '全屏' },
         { role: 'toggleDevTools', label: '开发者工具' },
       ],
@@ -151,14 +184,7 @@ function buildMenu() {
       submenu: [
         {
           label: '关于 WuMark',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: '关于 WuMark',
-              message: 'WuMark v1.0.0',
-              detail: 'WuMark 无码 - 无干扰的极简Markdown编辑器\n基于 Electron 构建\n开发者: wushaozhi',
-            });
-          },
+          click: () => mainWindow.webContents.send('menu:about'),
         },
       ],
     },
@@ -176,8 +202,19 @@ async function openFile(filePath) {
       fileName: path.basename(filePath),
     });
     mainWindow.setTitle(`${path.basename(filePath)} - WuMark`);
+    addToRecent(filePath);
   } catch (err) {
     dialog.showErrorBox('打开失败', `无法读取文件: ${err.message}`);
+  }
+}
+
+function addToRecent(filePath) {
+  recentFiles = recentFiles.filter(f => f.path !== filePath);
+  recentFiles.unshift({ path: filePath, name: path.basename(filePath), time: Date.now() });
+  if (recentFiles.length > 10) recentFiles = recentFiles.slice(0, 10);
+  saveRecentFiles();
+  if (mainWindow) {
+    mainWindow.webContents.send('recent:files', recentFiles);
   }
 }
 
@@ -191,6 +228,7 @@ function handleIPC() {
     const filePath = result.filePaths[0];
     const content = fs.readFileSync(filePath, 'utf-8');
     mainWindow.setTitle(`${path.basename(filePath)} - WuMark`);
+    addToRecent(filePath);
     return { content, filePath, fileName: path.basename(filePath) };
   });
 
@@ -204,7 +242,11 @@ function handleIPC() {
   });
 
   ipcMain.handle('dialog:saveAs', async (_, { content }) => {
-    return handleSaveAs(content);
+    const result = await handleSaveAs(content);
+    if (result && result.filePath) {
+      addToRecent(result.filePath);
+    }
+    return result;
   });
 
   ipcMain.handle('file:saveClipboardImage', async (_, { mdPath }) => {
@@ -234,6 +276,38 @@ function handleIPC() {
       const item = fileMenu.submenu.items.find(i => i.label === '自动保存');
       if (item) item.checked = enabled;
     }
+  });
+
+  ipcMain.on('window:resetTitle', () => {
+    mainWindow.setTitle('WuMark - 无码Markdown编辑器');
+  });
+
+  ipcMain.on('recent:update', (_, files) => {
+    recentFiles = files;
+    saveRecentFiles();
+  });
+
+  ipcMain.handle('recent:open', (_, filePath) => {
+    openFile(filePath);
+  });
+
+  ipcMain.handle('theme:getInitial', () => {
+    try {
+      const config = JSON.parse(fs.readFileSync(getThemeConfigPath(), 'utf-8'));
+      const theme = config.theme || 'light';
+      nativeTheme.themeSource = theme;
+      return theme;
+    } catch {
+      nativeTheme.themeSource = 'light';
+      return 'light';
+    }
+  });
+
+  ipcMain.on('theme:save', (_, theme) => {
+    try {
+      fs.writeFileSync(getThemeConfigPath(), JSON.stringify({ theme }), 'utf-8');
+      nativeTheme.themeSource = theme;
+    } catch {}
   });
 
 }
@@ -273,9 +347,9 @@ app.whenReady().then(() => {
   createWindow();
 
   const fileToOpen = process.argv.find(a => a.endsWith('.md') || a.endsWith('.markdown'));
-  if (fileToOpen) {
-    mainWindow.webContents.once('did-finish-load', () => openFile(fileToOpen));
-  }
+  mainWindow.webContents.once('did-finish-load', () => {
+    if (fileToOpen) openFile(fileToOpen);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -28,7 +28,7 @@
         "nsis"
       ],
       "icon": "assets/wuma.png",
-      "signAndEditExecutable": false,
+      "signAndEditExecutable": true,
       "fileAssociations": [
         {
           "ext": "md",

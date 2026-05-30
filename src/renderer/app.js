@@ -15,10 +15,12 @@ const previewPane = document.getElementById('preview-pane');
 let resizeStartX = 0;
 let resizeStartLeft = 0;
 let isResizing = false;
-let autoSaveTimer = null;
+let autoSaveDebounceTimer = null;
 let autoSaveEnabled = false;
+const AUTO_SAVE_DEBOUNCE_MS = 1000;
 
 function init() {
+  loadThemePreference();
   bindEditorEvents();
   bindToolbar();
   bindResizer();
@@ -26,53 +28,170 @@ function init() {
   bindDragDrop();
   bindPaste();
   bindKeyboard();
-  insertWelcomeContent();
-  updatePreview();
+  bindLandingButtons();
+  showLandingPage();
   updateStatus();
+  // Sync localStorage recent files to main process for menu
+  syncRecentMenu(getRecentFiles());
 }
 
-function insertWelcomeContent() {
-  const welcome = `# 欢迎使用 WuMark (无码) 🎉
-
-WuMark 是一款无干扰的极简 Markdown 编辑器，支持所见即所得的实时预览。
-
-## 快速上手
-
-在左侧编辑区输入 Markdown 语法，右侧即可实时查看渲染效果。
-
-### 支持的语法
-
-- **粗体** \`**粗体**\`
-- *斜体* \`*斜体*\`
-- ~~删除线~~ \`~~删除线~~\`
-- \`行内代码\` \`\`行内代码\`\`
-
-### 代码块
-
-\`\`\`javascript
-function hello() {
-  console.log("Hello, WuMd!");
+// ─── Theme ──────────────────────────────────────────
+function loadThemePreference() {
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.invoke('theme:getInitial').then(theme => {
+    applyTheme(theme);
+  });
 }
-\`\`\`
 
-### 表格
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.body.classList.add('dark-mode');
+  } else {
+    document.body.classList.remove('dark-mode');
+  }
+}
 
-| 功能 | 快捷键 |
-|------|--------|
-| 保存 | Ctrl+S |
-| 打开 | Ctrl+O |
-| 新建 | Ctrl+N |
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  const theme = isDark ? 'dark' : 'light';
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.send('theme:save', theme);
+}
 
-### 任务列表
+// ─── Landing Page ──────────────────────────────────
+function showLandingPage() {
+  const app = document.getElementById('app');
+  const landing = document.getElementById('landing');
+  app.style.display = 'none';
+  landing.style.display = 'flex';
+  loadRecentFilesUI();
+}
 
-- [x] 双栏编辑与实时预览
-- [x] 文件打开/保存
-- [ ] 更多高级功能
+function hideLandingPage() {
+  const app = document.getElementById('app');
+  const landing = document.getElementById('landing');
+  app.style.display = 'flex';
+  landing.style.display = 'none';
+}
 
-> 祝使用愉快！ — wushaozhi
-`;
-  editor.value = welcome;
-  state.content = welcome;
+function bindLandingButtons() {
+  document.getElementById('landing-open').addEventListener('click', async () => {
+    const { ipcRenderer } = require('electron');
+    const result = await ipcRenderer.invoke('dialog:openFile');
+    if (result) {
+      editor.value = result.content;
+      state.content = result.content;
+      state.filePath = result.filePath;
+      state.fileName = result.fileName;
+      state.modified = false;
+      hideLandingPage();
+      updatePreview();
+      updateStatus();
+    }
+  });
+  document.getElementById('landing-new').addEventListener('click', () => {
+    editor.value = '';
+    state.content = '';
+    state.filePath = null;
+    state.fileName = '未命名.md';
+    state.modified = false;
+    hideLandingPage();
+    updatePreview();
+    updateStatus();
+  });
+}
+
+// ─── Recent Files ──────────────────────────────────
+const RECENT_MAX = 10;
+
+function addToRecentFiles(filePath, fileName) {
+  let recent = getRecentFiles();
+  recent = recent.filter(f => f.path !== filePath);
+  recent.unshift({ path: filePath, name: fileName, time: Date.now() });
+  if (recent.length > RECENT_MAX) recent = recent.slice(0, RECENT_MAX);
+  localStorage.setItem('wumark-recent', JSON.stringify(recent));
+  loadRecentFilesUI();
+  syncRecentMenu(recent);
+}
+
+function getRecentFiles() {
+  try {
+    return JSON.parse(localStorage.getItem('wumark-recent')) || [];
+  } catch { return []; }
+}
+
+function loadRecentFilesUI() {
+  const recent = getRecentFiles();
+  const container = document.getElementById('landing-recent');
+  const list = document.getElementById('landing-recent-list');
+  if (recent.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+  list.innerHTML = '';
+  const maxShow = 5;
+  recent.slice(0, maxShow).forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'landing-recent-item';
+    item.innerHTML = `
+      <span class="landing-recent-item-icon">📄</span>
+      <div class="landing-recent-item-info">
+        <div class="landing-recent-item-name">${escapeHtml(f.name)}</div>
+        <div class="landing-recent-item-path">${escapeHtml(f.path)}</div>
+      </div>
+    `;
+    item.addEventListener('click', async () => {
+      const { ipcRenderer } = require('electron');
+      const fs = require('fs');
+      if (fs.existsSync(f.path)) {
+        const content = fs.readFileSync(f.path, 'utf-8');
+        editor.value = content;
+        state.content = content;
+        state.filePath = f.path;
+        state.fileName = f.name;
+        state.modified = false;
+        hideLandingPage();
+        updatePreview();
+        updateStatus();
+        addToRecentFiles(f.path, f.name);
+      } else {
+        removeRecentFile(f.path);
+      }
+    });
+    list.appendChild(item);
+  });
+}
+
+function removeRecentFile(filePath) {
+  let recent = getRecentFiles();
+  recent = recent.filter(f => f.path !== filePath);
+  localStorage.setItem('wumark-recent', JSON.stringify(recent));
+  loadRecentFilesUI();
+  syncRecentMenu(recent);
+}
+
+function syncRecentMenu(recent) {
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.send('recent:update', recent);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function triggerAutoSave() {
+  if (autoSaveDebounceTimer) {
+    clearTimeout(autoSaveDebounceTimer);
+    autoSaveDebounceTimer = null;
+  }
+  if (!autoSaveEnabled || !state.filePath) return;
+  autoSaveDebounceTimer = setTimeout(async () => {
+    autoSaveDebounceTimer = null;
+    await saveCurrent();
+  }, AUTO_SAVE_DEBOUNCE_MS);
 }
 
 function bindEditorEvents() {
@@ -81,6 +200,7 @@ function bindEditorEvents() {
     state.modified = true;
     updatePreview();
     updateStatus();
+    triggerAutoSave();
   });
 
   editor.addEventListener('scroll', () => {
@@ -117,6 +237,16 @@ function updateStatus() {
   document.getElementById('status-modified').textContent = state.modified ? '● 已修改' : '';
 }
 
+function showAboutDialog() {
+  const overlay = document.getElementById('about-overlay');
+  overlay.style.display = 'flex';
+
+  const closeBtn = document.getElementById('about-close-btn');
+  const close = () => { overlay.style.display = 'none'; };
+  closeBtn.onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+}
+
 function toggleAutoSave() {
   autoSaveEnabled = !autoSaveEnabled;
   const { ipcRenderer } = require('electron');
@@ -151,18 +281,17 @@ function showModal(text, buttons) {
 }
 
 function startAutoSave() {
-  stopAutoSave();
-  autoSaveTimer = setInterval(async () => {
-    if (state.modified && state.filePath) {
-      await saveCurrent();
-    }
-  }, 30000);
+  // Auto-save is now trigger-based (debounced on input), no interval needed
+  // Force an immediate save when enabling to capture current state
+  if (state.modified && state.filePath) {
+    saveCurrent();
+  }
 }
 
 function stopAutoSave() {
-  if (autoSaveTimer) {
-    clearInterval(autoSaveTimer);
-    autoSaveTimer = null;
+  if (autoSaveDebounceTimer) {
+    clearTimeout(autoSaveDebounceTimer);
+    autoSaveDebounceTimer = null;
   }
 }
 
@@ -295,6 +424,7 @@ function bindIPC() {
     state.filePath = data.filePath;
     state.fileName = data.fileName;
     state.modified = false;
+    hideLandingPage();
     updatePreview();
     updateStatus();
   });
@@ -309,6 +439,7 @@ function bindIPC() {
     state.filePath = null;
     state.fileName = '未命名.md';
     state.modified = false;
+    hideLandingPage();
     updatePreview();
     updateStatus();
   });
@@ -332,6 +463,47 @@ function bindIPC() {
 
   ipcRenderer.on('menu:toggleAutoSave', (_, checked) => {
     if (checked !== autoSaveEnabled) toggleAutoSave();
+  });
+
+  ipcRenderer.on('menu:toggleTheme', () => {
+    toggleTheme();
+  });
+
+  ipcRenderer.on('recent:files', (_, files) => {
+    localStorage.setItem('wumark-recent', JSON.stringify(files));
+    loadRecentFilesUI();
+  });
+
+  ipcRenderer.on('recent:remove', (_, filePath) => {
+    removeRecentFile(filePath);
+  });
+
+  ipcRenderer.on('menu:about', () => {
+    showAboutDialog();
+  });
+
+  ipcRenderer.on('menu:closeFile', async () => {
+    if (state.modified) {
+      const action = await showModal('文档已修改，关闭前是否保存更改？', [
+        { label: '保存', action: 'save', primary: true },
+        { label: '不保存', action: 'close' },
+        { label: '取消', action: 'cancel' },
+      ]);
+      if (action === 'save') {
+        await saveCurrent();
+      } else if (action === 'cancel') {
+        return;
+      }
+    }
+    editor.value = '';
+    state.content = '';
+    state.filePath = null;
+    state.fileName = '未命名.md';
+    state.modified = false;
+    showLandingPage();
+    updatePreview();
+    updateStatus();
+    ipcRenderer.send('window:resetTitle');
   });
 
   ipcRenderer.on('app:beforeClose', async () => {
@@ -402,8 +574,10 @@ function bindDragDrop() {
         state.filePath = file.path;
         state.fileName = file.name;
         state.modified = false;
+        hideLandingPage();
         updatePreview();
         updateStatus();
+        addToRecentFiles(file.path, file.name);
       } else if (isImage) {
         const { ipcRenderer, webUtils } = require('electron');
         const srcPath = webUtils.getPathForFile ? webUtils.getPathForFile(file) : file.path;
