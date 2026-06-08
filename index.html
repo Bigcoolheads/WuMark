@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WuMark · 无码 — 极简 Markdown 编辑器</title>
+  <link rel="icon" type="image/svg+xml" href="assets/wuma.svg">
+  <style>
+    :root {
+      --navy-900: #0F172A;
+      --navy-800: #1E293B;
+      --navy-700: #334155;
+      --slate-400: #94A3B8;
+      --slate-300: #CBD5E1;
+      --slate-200: #E2E8F0;
+      --cyan: #22D3EE;
+      --cyan-dim: rgba(34, 211, 238, 0.12);
+      --white: #FFFFFF;
+      --radius: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--navy-900);
+      color: var(--slate-300);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    nav .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    nav .logo img { width: 28px; height: 28px; border-radius: 6px; }
+
+    nav .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+
+    nav .nav-links a {
+      color: var(--slate-400);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    nav .nav-links a:hover { color: var(--cyan); }
+
+    .nav-gh-btn { display: flex; align-items: center; gap: 6px; }
+
+    .nav-gh-btn a {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border: 1px solid var(--navy-700);
+      border-radius: 8px;
+      color: var(--slate-300);
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .nav-gh-btn a:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* Hero */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 50%, rgba(34, 211, 238, 0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 50%, rgba(34, 211, 238, 0.04) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+      padding: 120px 0 80px;
+      position: relative;
+    }
+
+    .hero-text { flex: 1; }
+
+    .hero-text .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero-text h1 {
+      font-size: clamp(36px, 5vw, 54px);
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+
+    .hero-text h1 span { color: var(--cyan); }
+
+    .hero-text .subtitle {
+      font-size: 18px;
+      color: var(--slate-400);
+      margin-bottom: 12px;
+    }
+
+    .hero-text .desc {
+      font-size: 15px;
+      color: var(--slate-400);
+      max-width: 480px;
+      margin-bottom: 32px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--cyan);
+      color: var(--navy-900);
+    }
+
+    .btn-primary:hover {
+      background: #67e8f9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(34, 211, 238, 0.3);
+    }
+
+    .btn-outline {
+      border: 1px solid var(--navy-700);
+      color: var(--slate-300);
+      background: transparent;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: translateY(-1px);
+    }
+
+    .hero-visual { flex: 0 0 260px; text-align: center; }
+
+    .hero-visual img {
+      width: 200px;
+      height: 200px;
+      filter: drop-shadow(0 0 40px rgba(34, 211, 238, 0.15));
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    /* Section common */
+    section { padding: 100px 0; }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 3.5vw, 38px);
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 16px;
+      color: var(--slate-400);
+      max-width: 600px;
+    }
+
+    /* Features */
+    #features { background: var(--navy-800); }
+
+    .features-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .features-header .section-desc { margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      padding: 28px 24px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      border-radius: var(--radius);
+      transition: all 0.25s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(34, 211, 238, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: var(--cyan-dim);
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--slate-400);
+      line-height: 1.6;
+    }
+
+    /* Showcase */
+    #showcase .section-desc { margin-bottom: 40px; }
+
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .showcase-card {
+      background: var(--navy-800);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .showcase-card:hover { border-color: rgba(34, 211, 238, 0.25); }
+
+    .showcase-preview {
+      padding: 24px;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy-900);
+    }
+
+    .showcase-preview-inner {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .showcase-info {
+      padding: 16px 24px 20px;
+      border-top: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    .showcase-info h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .showcase-info p {
+      font-size: 13px;
+      color: var(--slate-400);
+    }
+
+    /* Mock editor in showcase */
+    .mock-editor {
+      background: #1a1a2e;
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .mock-editor-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .mock-editor-bar .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .mock-editor-body { padding: 16px; }
+
+    .mock-editor-body .line { white-space: pre; }
+    .mock-editor-body .h { color: #569CD6; }
+    .mock-editor-body .b { color: #DCDCAA; }
+    .mock-editor-body .s { color: #CE9178; }
+    .mock-editor-body .c { color: #6A9955; }
+    .mock-editor-body .k { color: #C586C0; }
+    .mock-editor-body .p { color: #D4D4D4; }
+    .mock-editor-body .hl { background: rgba(255,255,255,0.06); border-radius: 2px; padding: 0 2px; }
+
+    .mock-preview {
+      padding: 20px;
+      color: #d4d4d4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+      font-size: 14px;
+    }
+
+    .mock-preview h1 { font-size: 22px; color: #e0e0e0; margin-bottom: 4px; border-bottom: 1px solid #3c3c3c; padding-bottom: 8px; }
+    .mock-preview p { margin: 8px 0; }
+    .mock-preview strong { color: #e0e0e0; }
+    .mock-preview code { background: rgba(200,200,200,0.12); padding: 1px 6px; border-radius: 3px; font-family: 'Consolas', monospace; color: #CE9178; font-size: 13px; }
+    .mock-preview .table-w { overflow-x: auto; margin: 8px 0; }
+    .mock-preview table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mock-preview th, .mock-preview td { padding: 6px 10px; border: 1px solid #3c3c3c; text-align: left; }
+    .mock-preview th { background: #2d2d2d; font-weight: 600; }
+    .mock-preview img { max-width: 100%; border-radius: 4px; margin: 8px 0; }
+
+    .mock-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 260px;
+    }
+
+    .mock-split .mock-editor { border-radius: 0; }
+    .mock-split .mock-preview { border-left: 1px solid rgba(255,255,255,0.08); }
+
+    /* Get Started */
+    #download { text-align: center; background: var(--navy-800); }
+
+    #download .section-desc { margin: 0 auto 40px; }
+
+    .download-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 700px;
+      margin: 0 auto 32px;
+    }
+
+    .download-card {
+      padding: 32px 24px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      border-radius: var(--radius);
+      transition: all 0.25s;
+      text-align: center;
+    }
+
+    .download-card:hover {
+      border-color: rgba(34, 211, 238, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .download-card .icon { font-size: 32px; margin-bottom: 16px; }
+    .download-card h3 { font-size: 18px; font-weight: 600; color: var(--white); margin-bottom: 6px; }
+    .download-card p { font-size: 13px; color: var(--slate-400); margin-bottom: 16px; }
+
+    .build-cmd {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--navy-900);
+      border: 1px solid var(--navy-700);
+      border-radius: 8px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      color: var(--cyan);
+    }
+
+    /* Tech Stack */
+    #tech .section-desc { margin-bottom: 40px; }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+    }
+
+    .tech-item {
+      padding: 20px 16px;
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid rgba(51, 65, 85, 0.3);
+      border-radius: 12px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .tech-item:hover {
+      border-color: rgba(34, 211, 238, 0.2);
+    }
+
+    .tech-item .name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 2px;
+    }
+
+    .tech-item .role {
+      font-size: 12px;
+      color: var(--slate-400);
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid rgba(51, 65, 85, 0.4);
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--slate-400);
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      nav .nav-links { display: none; }
+      .hero-content { flex-direction: column-reverse; text-align: center; padding-top: 100px; gap: 30px; }
+      .hero-text .desc { margin: 0 auto 28px; }
+      .hero-actions { justify-content: center; }
+      .hero-visual { flex: none; }
+      .hero-visual img { width: 140px; height: 140px; }
+      .showcase-grid { grid-template-columns: 1fr; }
+      .download-cards { grid-template-columns: 1fr; }
+      #features .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container">
+      <a href="#" class="logo">
+        <img src="assets/wuma.svg" alt="WuMark">
+        WuMark
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">功能</a></li>
+        <li><a href="#showcase">展示</a></li>
+        <li><a href="#download">安装</a></li>
+        <li><a href="#tech">技术栈</a></li>
+      </ul>
+      <div class="nav-gh-btn">
+        <a href="https://github.com/Bigcoolheads/WuMark" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section id="hero">
+    <div class="container hero-content">
+      <div class="hero-text">
+        <div class="badge">v1.0.0 · 2026</div>
+        <h1>WuMark <span>· 无码</span></h1>
+        <p class="subtitle">无干扰 · 极简 Markdown 编辑器</p>
+        <p class="desc">
+          基于 Electron 构建的桌面 Markdown 编辑器，拥有双栏实时预览、三种视图模式、
+          语法高亮、图片拖拽粘贴等特性。单文件便携免安装。
+        </p>
+        <div class="hero-actions">
+          <a href="#download" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.5.5 0 0 1 .5.5v6.793l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 0 1 .708-.708L7.5 8.293V1.5A.5.5 0 0 1 8 1z"/><path d="M1.5 11a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 13.5 15h-11A1.5 1.5 0 0 1 1 13.5v-2a.5.5 0 0 1 .5-.5z"/></svg>
+            下载 WuMark
+          </a>
+          <a href="https://github.com/Bigcoolheads/WuMark" target="_blank" rel="noopener" class="btn btn-outline">
+            GitHub 仓库
+          </a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <img src="assets/wuma.svg" alt="WuMark logo">
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container">
+      <div class="features-header">
+        <div class="section-label">Features</div>
+        <h2 class="section-title">为什么选择 WuMark？</h2>
+        <p class="section-desc">轻量、专注、开箱即用——为 Markdown 写作而生。</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">◫</div>
+          <h3>双栏实时预览</h3>
+          <p>左侧编辑右侧渲染，输入即所见。支持拖拽调节分栏比例。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✎</div>
+          <h3>三种视图模式</h3>
+          <p>编辑 / 预览 / 双栏，一键切换，适应不同写作场景。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>单文件便携</h3>
+          <p>打包为单个 exe，无需安装，开箱即用。支持 .md 文件关联。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼</div>
+          <h3>图片拖拽粘贴</h3>
+          <p>从资源管理器拖入或截图粘贴，自动保存并插入 Markdown 图片语法。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💾</div>
+          <h3>自动保存</h3>
+          <p>文件菜单中开启自动保存，每 30 秒自动存档，不再丢失内容。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>关闭保护</h3>
+          <p>未保存时弹出自定义对话框，提供保存 / 丢弃 / 取消三个选项。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⌨</div>
+          <h3>快捷键支持</h3>
+          <p>Ctrl+S 保存、Ctrl+O 打开、Ctrl+N 新建、工具栏一键插入语法。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>语法高亮</h3>
+          <p>预览区代码块支持 highlight.js 语法高亮，覆盖主流编程语言。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Showcase -->
+  <section id="showcase">
+    <div class="container">
+      <div class="section-label">Showcase</div>
+      <h2 class="section-title">看一眼就知道</h2>
+      <p class="section-desc">双栏编辑、标记语法即时渲染，所见即所得。</p>
+      <div class="showcase-grid">
+        <div class="showcase-card">
+          <div class="showcase-preview">
+            <div class="showcase-preview-inner">
+              <div class="mock-editor">
+                <div class="mock-editor-bar">
+                  <span class="dot" style="background:#FF5F57"></span>
+                  <span class="dot" style="background:#FEBC2E"></span>
+                  <span class="dot" style="background:#28C840"></span>
+                  <span style="margin-left:12px;font-size:11px;color:rgba(255,255,255,0.4)">untitled.md</span>
+                </div>
+                <div class="mock-editor-body">
+                  <div class="line"><span class="h"># 欢迎使用 WuMark</span></div>
+                  <div class="line"> </div>
+                  <div class="line"><span class="b">**WuMark**</span> 是一款无干扰的极简 Markdown 编辑器。</div>
+                  <div class="line"> </div>
+                  <div class="line"><span class="h">### 支持的语法</span></div>
+                  <div class="line"> </div>
+                  <div class="line">- <span class="b">**粗体**</span>、<span class="c">*斜体*</span>、<span class="s">~~删除线~~</span></div>
+                  <div class="line">- <span class="hl"><span class="c">`行内代码`</span></span></div>
+                  <div class="line"> </div>
+                  <div class="line"><span class="k">```</span><span class="k">javascript</span></div>
+                  <div class="line"><span class="k">function</span> hello() {</div>
+                  <div class="line">  console.<span class="p">log</span>(<span class="s">"Hello, WuMd!"</span>);</div>
+                  <div class="line">}</div>
+                  <div class="line"><span class="k">```</span></div>
+                  <div class="line"> </div>
+                  <div class="line">| 功能 | 快捷键 |</div>
+                  <div class="line">|------|--------|</div>
+                  <div class="line">| 保存 | Ctrl+S |</div>
+                  <div class="line">| 打开 | Ctrl+O |</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="showcase-info">
+            <h4>源码编辑</h4>
+            <p>熟悉的 Markdown 语法，支持语法高亮的编辑器。</p>
+          </div>
+        </div>
+        <div class="showcase-card">
+          <div class="showcase-preview">
+            <div class="showcase-preview-inner">
+              <div class="mock-split">
+                <div class="mock-editor" style="border-radius:0">
+                  <div class="mock-editor-bar">
+                    <span class="dot" style="background:#FF5F57"></span>
+                    <span class="dot" style="background:#FEBC2E"></span>
+                    <span class="dot" style="background:#28C840"></span>
+                    <span style="margin-left:8px;font-size:10px;color:rgba(255,255,255,0.4)">源码</span>
+                  </div>
+                  <div class="mock-editor-body" style="padding:10px;font-size:12px">
+                    <div class="line"><span class="h"># 标题</span></div>
+                    <div class="line"> </div>
+                    <div class="line"><span class="b">**粗体**</span> &amp; <span class="c">*斜体*</span></div>
+                    <div class="line"> </div>
+                    <div class="line"><span class="s">~~删除~~</span> &amp; <span class="hl"><span class="c">`代码`</span></span></div>
+                    <div class="line"> </div>
+                    <div class="line">- 列表项 1</div>
+                    <div class="line">- 列表项 2</div>
+                    <div class="line"> </div>
+                    <div class="line"><span class="k">&gt;</span> 引用文本</div>
+                  </div>
+                </div>
+                <div class="mock-preview" style="padding:14px;font-size:13px">
+                  <h1 style="font-size:20px">标题</h1>
+                  <p><strong>粗体</strong> &amp; <em>斜体</em></p>
+                  <p><del>删除</del> &amp; <code>代码</code></p>
+                  <ul style="padding-left:18px">
+                    <li>列表项 1</li>
+                    <li>列表项 2</li>
+                  </ul>
+                  <blockquote style="border-left:3px solid #4a90d9;padding-left:10px;margin:6px 0;color:#969696">引用文本</blockquote>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="showcase-info">
+            <h4>双栏同步</h4>
+            <p>编辑区与预览区独立滚动，支持拖拽调节宽度。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section id="download">
+    <div class="container">
+      <div class="section-label">Get Started</div>
+      <h2 class="section-title">下载与构建</h2>
+      <p class="section-desc">下载便携版直接使用，或从源码自行构建。</p>
+      <div class="download-cards">
+        <div class="download-card">
+          <div class="icon">📥</div>
+          <h3>便携版下载</h3>
+          <p>单文件 exe，下载后双击即可运行，无需安装。</p>
+          <a href="https://github.com/Bigcoolheads/WuMark/releases" target="_blank" rel="noopener" class="btn btn-primary">
+            下载 WuMark.exe
+          </a>
+        </div>
+        <div class="download-card">
+          <div class="icon">🔧</div>
+          <h3>源码构建</h3>
+          <p>克隆仓库，安装依赖，一行命令打包。</p>
+          <div style="margin-bottom:16px">
+            <code class="build-cmd">npm install &amp;&amp; npm run build</code>
+          </div>
+          <a href="https://github.com/Bigcoolheads/WuMark" target="_blank" rel="noopener" class="btn btn-outline">
+            查看源码 →
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section id="tech">
+    <div class="container">
+      <div class="section-label">Tech Stack</div>
+      <h2 class="section-title">技术栈</h2>
+      <p class="section-desc">基于现代 Web 技术构建的桌面应用。</p>
+      <div class="tech-grid">
+        <div class="tech-item">
+          <div class="name">Electron 33</div>
+          <div class="role">桌面框架</div>
+        </div>
+        <div class="tech-item">
+          <div class="name">Node.js 24</div>
+          <div class="role">运行时</div>
+        </div>
+        <div class="tech-item">
+          <div class="name">marked 15</div>
+          <div class="role">Markdown 解析</div>
+        </div>
+        <div class="tech-item">
+          <div class="name">highlight.js 11</div>
+          <div class="role">语法高亮</div>
+        </div>
+        <div class="tech-item">
+          <div class="name">electron-builder</div>
+          <div class="role">打包分发</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>
+        <a href="https://github.com/Bigcoolheads/WuMark" target="_blank" rel="noopener">WuMark (无码)</a>
+        &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; 2026 wushaozhi
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
