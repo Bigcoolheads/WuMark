@@ -1,6 +1,6 @@
 {
   "name": "wumark",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "WuMark - 无码，无干扰的极简Markdown编辑器",
   "author": "wushaozhi",
   "license": "MIT",
@@ -28,7 +28,7 @@
         "nsis"
       ],
       "icon": "assets/wuma.png",
-      "signAndEditExecutable": true,
+      "signAndEditExecutable": false,
       "fileAssociations": [
         {
           "ext": "md",

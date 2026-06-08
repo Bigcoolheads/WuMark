@@ -1,16 +1,15 @@
-const state = {
-  filePath: null,
-  fileName: '未命名.md',
-  content: '',
-  modified: false,
-  viewMode: 'split',
-};
+let tabs = [];
+let activeTabId = null;
+let tabIdCounter = 0;
+let viewMode = 'split';
 
 const editor = document.getElementById('editor');
 const preview = document.getElementById('preview');
 const resizer = document.getElementById('resizer');
 const editorPane = document.getElementById('editor-pane');
 const previewPane = document.getElementById('preview-pane');
+const tabList = document.getElementById('tab-list');
+const tabNew = document.getElementById('tab-new');
 
 let resizeStartX = 0;
 let resizeStartLeft = 0;
@@ -18,6 +17,120 @@ let isResizing = false;
 let autoSaveDebounceTimer = null;
 let autoSaveEnabled = false;
 const AUTO_SAVE_DEBOUNCE_MS = 1000;
+
+function createTab(filePath, fileName, content) {
+  const id = ++tabIdCounter;
+  const tab = { id, filePath, fileName, content, modified: false, savedContent: content, scrollTop: 0, cursorPos: 0 };
+  tabs.push(tab);
+  renderTabs();
+  switchTab(id);
+  hideLandingPage();
+  return tab;
+}
+
+function getTab(id) {
+  return tabs.find(t => t.id === id);
+}
+
+function getActiveTab() {
+  return getTab(activeTabId);
+}
+
+function setActiveTabField(key, value) {
+  const tab = getActiveTab();
+  if (tab) tab[key] = value;
+}
+
+function switchTab(id) {
+  const prev = getActiveTab();
+  if (prev) {
+    prev.content = editor.value;
+    prev.scrollTop = editor.scrollTop;
+    prev.cursorPos = editor.selectionStart;
+  }
+
+  activeTabId = id;
+  const tab = getActiveTab();
+  if (!tab) return;
+
+  editor.value = tab.content;
+  updatePreview();
+  updateStatus();
+  renderTabs();
+
+  requestAnimationFrame(() => {
+    editor.scrollTop = tab.scrollTop || 0;
+    try { editor.setSelectionRange(tab.cursorPos || 0, tab.cursorPos || 0); } catch {}
+    editor.focus();
+  });
+}
+
+function closeTab(id) {
+  const tab = getTab(id);
+  if (!tab) return;
+
+  if (tab.modified) {
+    switchTab(id);
+    showModal('文档已修改，关闭前是否保存更改？', [
+      { label: '保存', action: 'save', primary: true },
+      { label: '不保存', action: 'close' },
+      { label: '取消', action: 'cancel' },
+    ]).then(async (action) => {
+      if (action === 'save') {
+        await saveTab(tab);
+        doCloseTab(id);
+      } else if (action === 'close') {
+        doCloseTab(id);
+      }
+    });
+    return;
+  }
+
+  doCloseTab(id);
+}
+
+function doCloseTab(id) {
+  const idx = tabs.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  tabs.splice(idx, 1);
+
+  if (tabs.length === 0) {
+    activeTabId = null;
+    showLandingPage();
+    renderTabs();
+    return;
+  }
+
+  const next = Math.min(idx, tabs.length - 1);
+  switchTab(tabs[next].id);
+}
+
+function renderTabs() {
+  tabList.innerHTML = '';
+  for (const tab of tabs) {
+    const el = document.createElement('div');
+    el.className = 'tab-item' + (tab.id === activeTabId ? ' active' : '');
+    el.innerHTML = `
+      <span class="tab-name">${escapeHtml(tab.fileName)}</span>
+      ${tab.modified ? '<span class="tab-modified">●</span>' : ''}
+      <button class="tab-close" title="关闭">×</button>
+    `;
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('tab-close')) return;
+      switchTab(tab.id);
+    });
+    el.querySelector('.tab-close').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    tabList.appendChild(el);
+  }
+
+  const { ipcRenderer } = require('electron');
+  if (tabs.length === 0) {
+    ipcRenderer.send('window:resetTitle');
+  }
+}
 
 function init() {
   loadThemePreference();
@@ -31,7 +144,11 @@ function init() {
   bindLandingButtons();
   showLandingPage();
   updateStatus();
-  // Sync localStorage recent files to main process for menu
+
+  tabNew.addEventListener('click', () => {
+    newFile();
+  });
+
   syncRecentMenu(getRecentFiles());
 }
 
@@ -44,34 +161,25 @@ function loadThemePreference() {
 }
 
 function applyTheme(theme) {
-  if (theme === 'dark') {
-    document.body.classList.add('dark-mode');
-  } else {
-    document.body.classList.remove('dark-mode');
-  }
+  document.body.classList.toggle('dark-mode', theme === 'dark');
 }
 
 function toggleTheme() {
   const isDark = document.body.classList.toggle('dark-mode');
-  const theme = isDark ? 'dark' : 'light';
   const { ipcRenderer } = require('electron');
-  ipcRenderer.send('theme:save', theme);
+  ipcRenderer.send('theme:save', isDark ? 'dark' : 'light');
 }
 
 // ─── Landing Page ──────────────────────────────────
 function showLandingPage() {
-  const app = document.getElementById('app');
-  const landing = document.getElementById('landing');
-  app.style.display = 'none';
-  landing.style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
   loadRecentFilesUI();
 }
 
 function hideLandingPage() {
-  const app = document.getElementById('app');
-  const landing = document.getElementById('landing');
-  app.style.display = 'flex';
-  landing.style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('landing').style.display = 'none';
 }
 
 function bindLandingButtons() {
@@ -79,25 +187,11 @@ function bindLandingButtons() {
     const { ipcRenderer } = require('electron');
     const result = await ipcRenderer.invoke('dialog:openFile');
     if (result) {
-      editor.value = result.content;
-      state.content = result.content;
-      state.filePath = result.filePath;
-      state.fileName = result.fileName;
-      state.modified = false;
-      hideLandingPage();
-      updatePreview();
-      updateStatus();
+      openFileInTab(result.filePath, result.fileName, result.content);
     }
   });
   document.getElementById('landing-new').addEventListener('click', () => {
-    editor.value = '';
-    state.content = '';
-    state.filePath = null;
-    state.fileName = '未命名.md';
-    state.modified = false;
-    hideLandingPage();
-    updatePreview();
-    updateStatus();
+    newFile();
   });
 }
 
@@ -146,14 +240,7 @@ function loadRecentFilesUI() {
       const fs = require('fs');
       if (fs.existsSync(f.path)) {
         const content = fs.readFileSync(f.path, 'utf-8');
-        editor.value = content;
-        state.content = content;
-        state.filePath = f.path;
-        state.fileName = f.name;
-        state.modified = false;
-        hideLandingPage();
-        updatePreview();
-        updateStatus();
+        openFileInTab(f.path, f.name, content);
         addToRecentFiles(f.path, f.name);
       } else {
         removeRecentFile(f.path);
@@ -187,23 +274,49 @@ function triggerAutoSave() {
     clearTimeout(autoSaveDebounceTimer);
     autoSaveDebounceTimer = null;
   }
-  if (!autoSaveEnabled || !state.filePath) return;
+  if (!autoSaveEnabled) return;
   autoSaveDebounceTimer = setTimeout(async () => {
     autoSaveDebounceTimer = null;
     await saveCurrent();
   }, AUTO_SAVE_DEBOUNCE_MS);
 }
 
+// ─── Tab helpers ───────────────────────────────────
+function newFile() {
+  createTab(null, '未命名.md', '');
+}
+
+function openFileInTab(filePath, fileName, content) {
+  const existing = tabs.find(t => t.filePath && t.filePath === filePath);
+  if (existing) {
+    switchTab(existing.id);
+    return;
+  }
+  createTab(filePath, fileName, content);
+  addToRecentFiles(filePath, fileName);
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.send('window:setTitle', fileName);
+}
+
+// ─── Editor events ─────────────────────────────────
 function bindEditorEvents() {
   editor.addEventListener('input', () => {
-    state.content = editor.value;
-    state.modified = true;
-    updatePreview();
-    updateStatus();
-    triggerAutoSave();
+    const tab = getActiveTab();
+    if (tab) {
+      tab.content = editor.value;
+      if (!tab.modified && tab.content !== tab.savedContent) {
+        tab.modified = true;
+        renderTabs();
+      }
+      updatePreview();
+      updateStatus();
+      triggerAutoSave();
+    }
   });
 
   editor.addEventListener('scroll', () => {
+    const tab = getActiveTab();
+    if (tab) tab.scrollTop = editor.scrollTop;
     syncScroll();
   });
 
@@ -212,19 +325,21 @@ function bindEditorEvents() {
 }
 
 function syncScroll() {
-  if (state.viewMode !== 'split') return;
+  if (viewMode !== 'split') return;
   const scrollPercent = editor.scrollTop / (editor.scrollHeight - editor.clientHeight);
   preview.scrollTop = scrollPercent * (preview.scrollHeight - preview.clientHeight);
 }
 
 function updatePreview() {
-  preview.innerHTML = parseMarkdown(state.content);
+  const tab = getActiveTab();
+  preview.innerHTML = parseMarkdown(tab ? tab.content : '');
 }
 
 function updateStatus() {
+  const tab = getActiveTab();
   const text = editor.value;
   const words = text ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
-  document.getElementById('status-file').textContent = state.fileName;
+  document.getElementById('status-file').textContent = tab ? tab.fileName : '未命名.md';
   document.getElementById('status-words').textContent = `单词: ${words}`;
 
   const cursorPos = editor.selectionStart;
@@ -232,18 +347,15 @@ function updateStatus() {
   const lineNum = textBefore.split('\n').length;
   const colNum = cursorPos - textBefore.lastIndexOf('\n');
   document.getElementById('status-lines').textContent = `行: ${lineNum}, 列: ${colNum}`;
-
   document.getElementById('status-autosave').textContent = autoSaveEnabled ? '[A]' : '';
-  document.getElementById('status-modified').textContent = state.modified ? '● 已修改' : '';
+  document.getElementById('status-modified').textContent = (tab && tab.modified) ? '● 已修改' : '';
 }
 
 function showAboutDialog() {
   const overlay = document.getElementById('about-overlay');
   overlay.style.display = 'flex';
-
-  const closeBtn = document.getElementById('about-close-btn');
   const close = () => { overlay.style.display = 'none'; };
-  closeBtn.onclick = close;
+  document.getElementById('about-close-btn').onclick = close;
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
 }
 
@@ -281,9 +393,8 @@ function showModal(text, buttons) {
 }
 
 function startAutoSave() {
-  // Auto-save is now trigger-based (debounced on input), no interval needed
-  // Force an immediate save when enabling to capture current state
-  if (state.modified && state.filePath) {
+  const tab = getActiveTab();
+  if (tab && tab.modified && tab.filePath) {
     saveCurrent();
   }
 }
@@ -295,6 +406,7 @@ function stopAutoSave() {
   }
 }
 
+// ─── Toolbar ───────────────────────────────────────
 function bindToolbar() {
   document.querySelectorAll('.tool-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -350,7 +462,7 @@ function handleCommand(cmd) {
 }
 
 function setViewMode(mode) {
-  state.viewMode = mode;
+  viewMode = mode;
   editorPane.classList.remove('active');
   previewPane.classList.remove('active');
   document.querySelectorAll('.view-toggle .tool-btn').forEach(b => b.classList.remove('active'));
@@ -415,33 +527,16 @@ function bindResizer() {
   });
 }
 
+// ─── IPC ───────────────────────────────────────────
 function bindIPC() {
   const { ipcRenderer } = require('electron');
 
   ipcRenderer.on('file:opened', (event, data) => {
-    editor.value = data.content;
-    state.content = data.content;
-    state.filePath = data.filePath;
-    state.fileName = data.fileName;
-    state.modified = false;
-    hideLandingPage();
-    updatePreview();
-    updateStatus();
+    openFileInTab(data.filePath, data.fileName, data.content);
   });
 
   ipcRenderer.on('menu:new', async () => {
-    if (state.modified) {
-      const confirmed = confirm('当前文档未保存，确定新建吗？');
-      if (!confirmed) return;
-    }
-    editor.value = '';
-    state.content = '';
-    state.filePath = null;
-    state.fileName = '未命名.md';
-    state.modified = false;
-    hideLandingPage();
-    updatePreview();
-    updateStatus();
+    newFile();
   });
 
   ipcRenderer.on('menu:save', async () => {
@@ -483,41 +578,47 @@ function bindIPC() {
   });
 
   ipcRenderer.on('menu:closeFile', async () => {
-    if (state.modified) {
-      const action = await showModal('文档已修改，关闭前是否保存更改？', [
+    const tab = getActiveTab();
+    if (tab) {
+      closeTab(tab.id);
+    }
+  });
+
+  ipcRenderer.on('app:beforeClose', async () => {
+    const unsaved = tabs.filter(t => t.modified);
+    if (unsaved.length === 0) {
+      ipcRenderer.send('app:closeConfirmed');
+      return;
+    }
+
+    if (unsaved.length === 1) {
+      const tab = unsaved[0];
+      switchTab(tab.id);
+      const action = await showModal(`"${tab.fileName}" 已修改，关闭前是否保存更改？`, [
         { label: '保存', action: 'save', primary: true },
         { label: '不保存', action: 'close' },
         { label: '取消', action: 'cancel' },
       ]);
       if (action === 'save') {
-        await saveCurrent();
-      } else if (action === 'cancel') {
-        return;
+        await saveTab(tab);
+        ipcRenderer.send('app:closeConfirmed');
+      } else if (action === 'close') {
+        ipcRenderer.send('app:closeConfirmed');
       }
-    }
-    editor.value = '';
-    state.content = '';
-    state.filePath = null;
-    state.fileName = '未命名.md';
-    state.modified = false;
-    showLandingPage();
-    updatePreview();
-    updateStatus();
-    ipcRenderer.send('window:resetTitle');
-  });
-
-  ipcRenderer.on('app:beforeClose', async () => {
-    if (!state.modified) {
-      ipcRenderer.send('app:closeConfirmed');
       return;
     }
-    const action = await showModal('文档已修改，关闭前是否保存更改？', [
-      { label: '保存', action: 'save', primary: true },
-      { label: '不保存', action: 'close' },
+
+    const names = unsaved.map(t => t.fileName).join('、');
+    const action = await showModal(`以下 ${unsaved.length} 个文档已修改：\n${names}\n关闭前是否保存所有更改？`, [
+      { label: '全部保存', action: 'save', primary: true },
+      { label: '全部丢弃', action: 'close' },
       { label: '取消', action: 'cancel' },
     ]);
     if (action === 'save') {
-      await saveCurrent();
+      for (const t of unsaved) {
+        switchTab(t.id);
+        await saveTab(t);
+      }
       ipcRenderer.send('app:closeConfirmed');
     } else if (action === 'close') {
       ipcRenderer.send('app:closeConfirmed');
@@ -525,32 +626,59 @@ function bindIPC() {
   });
 }
 
-async function saveCurrent() {
+async function saveTab(tab) {
   const { ipcRenderer } = require('electron');
-  const content = editor.value;
-  if (state.filePath) {
-    const result = await ipcRenderer.invoke('dialog:saveFile', { content, filePath: state.filePath });
+  const content = tab.content;
+  if (tab.filePath) {
+    const result = await ipcRenderer.invoke('dialog:saveFile', { content, filePath: tab.filePath });
     if (result) {
-      state.modified = false;
-      updateStatus();
+      tab.modified = false;
+      tab.savedContent = content;
+      if (tab.id === activeTabId) {
+        updateStatus();
+        renderTabs();
+      }
     }
   } else {
-    await saveCurrentAs();
+    const result = await ipcRenderer.invoke('dialog:saveAs', { content });
+    if (result) {
+      tab.filePath = result.filePath;
+      tab.fileName = result.filePath.split(/[/\\]/).pop();
+      tab.modified = false;
+      tab.savedContent = content;
+      if (tab.id === activeTabId) {
+        updateStatus();
+        renderTabs();
+      }
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.send('window:setTitle', tab.fileName);
+    }
   }
+}
+
+async function saveCurrent() {
+  const tab = getActiveTab();
+  if (tab) await saveTab(tab);
 }
 
 async function saveCurrentAs() {
+  const tab = getActiveTab();
+  if (!tab) return;
   const { ipcRenderer } = require('electron');
-  const content = editor.value;
+  const content = tab.content;
   const result = await ipcRenderer.invoke('dialog:saveAs', { content });
   if (result) {
-    state.filePath = result.filePath;
-    state.fileName = result.filePath.split(/[/\\]/).pop();
-    state.modified = false;
+    tab.filePath = result.filePath;
+    tab.fileName = result.filePath.split(/[/\\]/).pop();
+    tab.modified = false;
+    tab.savedContent = content;
     updateStatus();
+    renderTabs();
+    ipcRenderer.send('window:setTitle', tab.fileName);
   }
 }
 
+// ─── Drag & Drop ───────────────────────────────────
 function bindDragDrop() {
   document.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -569,14 +697,7 @@ function bindDragDrop() {
 
       if (isMd) {
         const text = await file.text();
-        editor.value = text;
-        state.content = text;
-        state.filePath = file.path;
-        state.fileName = file.name;
-        state.modified = false;
-        hideLandingPage();
-        updatePreview();
-        updateStatus();
+        createTab(file.path, file.name, text);
         addToRecentFiles(file.path, file.name);
       } else if (isImage) {
         const { ipcRenderer, webUtils } = require('electron');
@@ -585,9 +706,10 @@ function bindDragDrop() {
           insertImageLink(toFileUrl(srcPath));
         } else {
           const buffer = await file.arrayBuffer();
+          const tab = getActiveTab();
           const result = await ipcRenderer.invoke('file:saveImageBuffer', {
             buffer,
-            mdPath: state.filePath,
+            mdPath: tab ? tab.filePath : null,
           });
           if (result) insertImageLink(toFileUrl(result.filePath));
         }
@@ -598,23 +720,23 @@ function bindDragDrop() {
   });
 }
 
+// ─── Paste ─────────────────────────────────────────
 function bindPaste() {
   editor.addEventListener('paste', async (e) => {
     try {
       const { clipboard, ipcRenderer } = require('electron');
 
-      // 1. Direct image data (screenshots, browser "copy image")
       const img = clipboard.readImage();
       if (!img.isEmpty()) {
         e.preventDefault();
+        const tab = getActiveTab();
         const result = await ipcRenderer.invoke('file:saveClipboardImage', {
-          mdPath: state.filePath,
+          mdPath: tab ? tab.filePath : null,
         });
         if (result) insertImageLink(toFileUrl(result.filePath));
         return;
       }
 
-      // 2. File path from clipboard text (Explorer copy)
       const text = clipboard.readText();
       if (text) {
         const fs = require('fs');

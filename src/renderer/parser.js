@@ -1,5 +1,21 @@
 const { marked } = require('marked');
-const hljs = require('highlight.js');
+const hljs = require('highlight.js/lib/core');
+
+const LANG_NAMES = [
+  'javascript', 'typescript', 'python', 'java', 'csharp',
+  'php', 'ruby', 'go', 'rust', 'swift', 'kotlin',
+  'c', 'cpp', 'bash', 'powershell', 'sql',
+  'xml', 'css', 'json', 'yaml', 'markdown',
+  'plaintext', 'diff',
+];
+
+for (const name of LANG_NAMES) {
+  try {
+    hljs.registerLanguage(name, require(`highlight.js/lib/languages/${name}`));
+  } catch {}
+}
+
+// 'xml' language already registers 'html' as an alias
 
 function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

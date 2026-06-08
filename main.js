@@ -201,7 +201,6 @@ async function openFile(filePath) {
       filePath,
       fileName: path.basename(filePath),
     });
-    mainWindow.setTitle(`${path.basename(filePath)} - WuMark`);
     addToRecent(filePath);
   } catch (err) {
     dialog.showErrorBox('打开失败', `无法读取文件: ${err.message}`);
@@ -227,7 +226,6 @@ function handleIPC() {
     if (result.canceled) return null;
     const filePath = result.filePaths[0];
     const content = fs.readFileSync(filePath, 'utf-8');
-    mainWindow.setTitle(`${path.basename(filePath)} - WuMark`);
     addToRecent(filePath);
     return { content, filePath, fileName: path.basename(filePath) };
   });
@@ -237,7 +235,6 @@ function handleIPC() {
       return handleSaveAs(content);
     }
     fs.writeFileSync(filePath, content, 'utf-8');
-    mainWindow.setTitle(`${path.basename(filePath)} - WuMark`);
     return { filePath };
   });
 
@@ -280,6 +277,10 @@ function handleIPC() {
 
   ipcMain.on('window:resetTitle', () => {
     mainWindow.setTitle('WuMark - 无码Markdown编辑器');
+  });
+
+  ipcMain.on('window:setTitle', (_, fileName) => {
+    mainWindow.setTitle(`${fileName} - WuMark`);
   });
 
   ipcMain.on('recent:update', (_, files) => {
@@ -338,7 +339,6 @@ async function handleSaveAs(content) {
   });
   if (result.canceled) return null;
   fs.writeFileSync(result.filePath, content, 'utf-8');
-  mainWindow.setTitle(`${path.basename(result.filePath)} - WuMark`);
   return { filePath: result.filePath };
 }
 
