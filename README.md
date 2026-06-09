@@ -5,7 +5,7 @@
 <h1 align="center">WuMark · 无码</h1>
 
 <p align="center">
-  <strong>无干扰 · 极简 · Markdown 编辑器</strong>
+  <strong>所见即所得 · 极简 · Markdown 编辑器</strong>
 </p>
 
 <p align="center">

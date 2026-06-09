@@ -1,7 +1,7 @@
 {
   "name": "wumark",
   "version": "1.5.0",
-  "description": "WuMark - 无码，无干扰的极简Markdown编辑器",
+  "description": "WuMark - 无码，所见即所得的极简Markdown编辑器",
   "author": "wushaozhi",
   "license": "MIT",
   "main": "main.js",
