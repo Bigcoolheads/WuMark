@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, shell, clipboard, nativeImage, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { writeExportFile } = require('./src/export-service');
 
 let recentFiles = loadRecentFiles();
 
@@ -9,6 +10,8 @@ let forceClose = false;
 
 function createWindow() {
   const bounds = loadWindowBounds();
+  const initialTheme = getSavedTheme();
+  nativeTheme.themeSource = initialTheme;
   mainWindow = new BrowserWindow({
     width: bounds.width || 1200,
     height: bounds.height || 760,
@@ -16,6 +19,7 @@ function createWindow() {
     y: bounds.y,
     minWidth: 800,
     minHeight: 500,
+    backgroundColor: initialTheme === 'dark' ? '#111a2a' : '#f4f7fa',
     title: 'WuMark - 无码Markdown编辑器',
     icon: path.join(__dirname, 'assets', 'wuma.png'),
     webPreferences: {
@@ -84,6 +88,15 @@ function getThemeConfigPath() {
   return path.join(app.getPath('userData'), 'theme.json');
 }
 
+function getSavedTheme() {
+  try {
+    const config = JSON.parse(fs.readFileSync(getThemeConfigPath(), 'utf-8'));
+    return config.theme === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
 function buildMenu() {
   const template = [
     {
@@ -119,6 +132,24 @@ function buildMenu() {
           click: () => mainWindow.webContents.send('menu:saveAs'),
         },
         {
+          label: '导出',
+          submenu: [
+            {
+              label: '导出为 HTML...',
+              click: () => mainWindow.webContents.send('menu:export', 'html'),
+            },
+            {
+              label: '导出为 PDF...',
+              accelerator: 'CmdOrCtrl+Shift+E',
+              click: () => mainWindow.webContents.send('menu:export', 'pdf'),
+            },
+            {
+              label: '导出为 PNG 图片...',
+              click: () => mainWindow.webContents.send('menu:export', 'png'),
+            },
+          ],
+        },
+        {
           label: '关闭文件',
           accelerator: 'CmdOrCtrl+W',
           click: () => mainWindow.webContents.send('menu:closeFile'),
@@ -147,6 +178,17 @@ function buildMenu() {
         { role: 'paste', label: '粘贴' },
         { type: 'separator' },
         {
+          label: '查找',
+          accelerator: 'CmdOrCtrl+F',
+          click: () => mainWindow.webContents.send('edit:find'),
+        },
+        {
+          label: '替换',
+          accelerator: 'CmdOrCtrl+H',
+          click: () => mainWindow.webContents.send('edit:replace'),
+        },
+        { type: 'separator' },
+        {
           label: '全选',
           accelerator: 'CmdOrCtrl+A',
           click: () => mainWindow.webContents.send('menu:selectAll'),
@@ -168,6 +210,17 @@ function buildMenu() {
           label: '双栏模式',
           click: () => mainWindow.webContents.send('view:split'),
         },
+        {
+          label: '实时预览模式',
+          accelerator: 'CmdOrCtrl+Shift+L',
+          click: () => mainWindow.webContents.send('view:live'),
+        },
+        { type: 'separator' },
+        {
+          label: '文档大纲',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => mainWindow.webContents.send('view:outline'),
+        },
         { type: 'separator' },
         {
           label: '切换浅色/深色模式',
@@ -182,6 +235,12 @@ function buildMenu() {
     {
       label: '帮助',
       submenu: [
+        {
+          label: 'Markdown 语法帮助',
+          accelerator: 'F1',
+          click: () => mainWindow.webContents.send('menu:syntaxHelp'),
+        },
+        { type: 'separator' },
         {
           label: '关于 WuMark',
           click: () => mainWindow.webContents.send('menu:about'),
@@ -261,6 +320,10 @@ function handleIPC() {
     return saveImageFile(Buffer.from(buffer), mdPath);
   });
 
+  ipcMain.handle('export:document', async (_, payload) => {
+    return exportDocument(payload);
+  });
+
   ipcMain.on('app:closeConfirmed', () => {
     forceClose = true;
     mainWindow.close();
@@ -293,24 +356,54 @@ function handleIPC() {
   });
 
   ipcMain.handle('theme:getInitial', () => {
-    try {
-      const config = JSON.parse(fs.readFileSync(getThemeConfigPath(), 'utf-8'));
-      const theme = config.theme || 'light';
-      nativeTheme.themeSource = theme;
-      return theme;
-    } catch {
-      nativeTheme.themeSource = 'light';
-      return 'light';
-    }
+    const theme = getSavedTheme();
+    nativeTheme.themeSource = theme;
+    return theme;
   });
 
   ipcMain.on('theme:save', (_, theme) => {
     try {
       fs.writeFileSync(getThemeConfigPath(), JSON.stringify({ theme }), 'utf-8');
       nativeTheme.themeSource = theme;
+      if (mainWindow) {
+        mainWindow.setBackgroundColor(theme === 'dark' ? '#111a2a' : '#f4f7fa');
+      }
     } catch {}
   });
 
+}
+
+async function exportDocument({ format, title, contentHtml, theme, sourcePath }) {
+  const config = {
+    html: { extension: 'html', name: 'HTML 文档' },
+    pdf: { extension: 'pdf', name: 'PDF 文档' },
+    png: { extension: 'png', name: 'PNG 图片' },
+  }[format];
+  if (!config) return { error: '不支持的导出格式' };
+
+  const baseName = path.basename(title || '未命名', path.extname(title || ''));
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: `导出为 ${config.extension.toUpperCase()}`,
+    defaultPath: `${baseName || '未命名'}.${config.extension}`,
+    filters: [{ name: config.name, extensions: [config.extension] }],
+  });
+  if (result.canceled || !result.filePath) return null;
+
+  try {
+    await writeExportFile({
+      format,
+      filePath: result.filePath,
+      title: baseName || 'WuMark 文档',
+      contentHtml,
+      theme,
+      sourcePath,
+      rootDir: __dirname,
+    });
+    return { filePath: result.filePath, format };
+  } catch (error) {
+    dialog.showErrorBox('导出失败', error.message);
+    return { error: error.message };
+  }
 }
 
 function saveImageFile(buffer, mdPath) {

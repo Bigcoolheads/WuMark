@@ -2,7 +2,7 @@
 .markdown-body {
   font-size: 16px;
   line-height: 1.7;
-  color: #333;
+  color: var(--text-primary);
   word-wrap: break-word;
   max-width: 860px;
   margin: 0 auto;
@@ -18,11 +18,11 @@
   margin-bottom: 0.6em;
   font-weight: 600;
   line-height: 1.3;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
-.markdown-body h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid #eee; }
-.markdown-body h2 { font-size: 1.6em; padding-bottom: 0.2em; border-bottom: 1px solid #eee; }
+.markdown-body h1 { font-size: 2em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border-color); }
+.markdown-body h2 { font-size: 1.6em; padding-bottom: 0.2em; border-bottom: 1px solid var(--border-color); }
 .markdown-body h3 { font-size: 1.35em; }
 .markdown-body h4 { font-size: 1.15em; }
 .markdown-body h5 { font-size: 1em; }
@@ -32,8 +32,21 @@
   margin: 0.8em 0;
 }
 
+.markdown-body .emoji {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 1.05em;
+}
+
+.markdown-body .katex-display {
+  max-width: 100%;
+  margin: 1.2em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
+
 .markdown-body a {
-  color: #4183c4;
+  color: var(--accent-color);
   text-decoration: none;
 }
 
@@ -59,7 +72,7 @@
   margin: 0;
   font-size: 85%;
   font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-  background: rgba(27, 31, 35, 0.06);
+  background: var(--accent-soft);
   border-radius: 3px;
 }
 
@@ -69,9 +82,9 @@
   overflow: auto;
   font-size: 85%;
   line-height: 1.45;
-  background: #f6f8fa;
+  background: var(--bg-secondary);
   border-radius: 6px;
-  border: 1px solid #e1e4e8;
+  border: 1px solid var(--border-color);
 }
 
 .markdown-body pre code {
@@ -121,9 +134,9 @@
 .markdown-body blockquote {
   margin: 1em 0;
   padding: 0.5em 1em;
-  border-left: 4px solid #4a90d9;
-  background: #f8f9fa;
-  color: #555;
+  border-left: 4px solid var(--accent-color);
+  background: var(--accent-soft);
+  color: var(--text-secondary);
 }
 
 .markdown-body blockquote p {
@@ -158,7 +171,7 @@
   height: 1px;
   margin: 1.5em 0;
   border: none;
-  background: #ddd;
+  background: var(--border-color);
 }
 
 .markdown-body img {
@@ -174,6 +187,12 @@
 .table-wrapper {
   overflow-x: auto;
   margin: 1em 0;
+  border-radius: 5px;
+  transition: box-shadow 0.15s ease;
+}
+
+.table-wrapper:hover {
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.22);
 }
 
 .markdown-body table {
@@ -185,21 +204,21 @@
 .markdown-body table th,
 .markdown-body table td {
   padding: 8px 12px;
-  border: 1px solid #dfe2e5;
+  border: 1px solid var(--border-color);
   text-align: left;
 }
 
 .markdown-body table th {
   font-weight: 600;
-  background: #f6f8fa;
+  background: var(--bg-secondary);
 }
 
 .markdown-body table tr:nth-child(even) {
-  background: #fafbfc;
+  background: color-mix(in srgb, var(--bg-secondary) 70%, var(--bg-primary));
 }
 
 .markdown-body table tr:hover {
-  background: #f0f4f8;
+  background: var(--accent-soft);
 }
 
 /* Task list styling */
@@ -220,7 +239,7 @@
 
 /* Dark mode markdown preview */
 .dark-mode .markdown-body {
-  color: #d4d4d4;
+  color: var(--text-primary);
 }
 
 .dark-mode .markdown-body h1,
@@ -229,30 +248,30 @@
 .dark-mode .markdown-body h4,
 .dark-mode .markdown-body h5,
 .dark-mode .markdown-body h6 {
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .dark-mode .markdown-body h1,
 .dark-mode .markdown-body h2 {
-  border-bottom-color: #3c3c3c;
+  border-bottom-color: var(--border-color);
 }
 
 .dark-mode .markdown-body h6 {
-  color: #969696;
+  color: var(--text-secondary);
 }
 
 .dark-mode .markdown-body a {
-  color: #4da3ff;
+  color: var(--accent-color);
 }
 
 .dark-mode .markdown-body code {
-  background: rgba(200, 200, 200, 0.12);
-  color: #ce9178;
+  background: var(--accent-soft);
+  color: #88d7e3;
 }
 
 .dark-mode .markdown-body pre {
-  background: #1e1e1e;
-  border-color: #3c3c3c;
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 .dark-mode .markdown-body pre code {
@@ -293,30 +312,30 @@
 .dark-mode .markdown-body .hljs-meta { color: #9b9b9b; }
 
 .dark-mode .markdown-body blockquote {
-  border-left-color: #007acc;
-  background: #2d2d2d;
-  color: #969696;
+  border-left-color: var(--accent-color);
+  background: var(--accent-soft);
+  color: var(--text-secondary);
 }
 
 .dark-mode .markdown-body hr {
-  background: #3c3c3c;
+  background: var(--border-color);
 }
 
 .dark-mode .markdown-body table th,
 .dark-mode .markdown-body table td {
-  border-color: #3c3c3c;
+  border-color: var(--border-color);
 }
 
 .dark-mode .markdown-body table th {
-  background: #2d2d2d;
+  background: var(--bg-secondary);
 }
 
 .dark-mode .markdown-body table tr:nth-child(even) {
-  background: #252526;
+  background: color-mix(in srgb, var(--bg-secondary) 76%, var(--bg-primary));
 }
 
 .dark-mode .markdown-body table tr:hover {
-  background: #2a2d2e;
+  background: var(--accent-soft);
 }
 
 .dark-mode .markdown-body img {

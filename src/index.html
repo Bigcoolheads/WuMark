@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: file:;">
   <title>WuMark - 无码Markdown编辑器</title>
+  <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css">
+  <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css">
   <link rel="stylesheet" href="styles/editor.css">
   <link rel="stylesheet" href="styles/markdown.css">
 </head>
@@ -42,9 +44,16 @@
         <button class="tool-btn" data-cmd="table" title="表格">⊞</button>
       </div>
       <div class="spacer"></div>
+      <div class="toolbar-group">
+        <button class="tool-btn" data-cmd="find" title="查找 Ctrl+F">⌕</button>
+        <button class="tool-btn" data-cmd="outline" title="文档大纲 Ctrl+Shift+O">☷</button>
+        <button class="tool-btn export-tool-btn" data-cmd="export" title="导出为 HTML、PDF 或 PNG">⇩</button>
+        <button class="tool-btn" data-cmd="syntax-help" title="Markdown 语法帮助 F1">?</button>
+      </div>
       <div class="divider"></div>
       <div class="toolbar-group view-toggle">
         <button class="tool-btn active" data-cmd="view-split" title="双栏模式">◫</button>
+        <button class="tool-btn" data-cmd="view-live" title="实时预览模式 Ctrl+Shift+L">◈</button>
         <button class="tool-btn" data-cmd="view-edit" title="编辑模式">✎</button>
         <button class="tool-btn" data-cmd="view-preview" title="预览模式">◉</button>
       </div>
@@ -55,18 +64,58 @@
       <button id="tab-new" title="新建标签页">+</button>
     </div>
 
+    <div id="search-panel" class="search-panel" hidden>
+      <input id="search-input" type="text" placeholder="查找">
+      <input id="replace-input" type="text" placeholder="替换为" hidden>
+      <label class="search-option" title="区分大小写">
+        <input id="search-case-sensitive" type="checkbox"> Aa
+      </label>
+      <span id="search-result">0/0</span>
+      <button id="search-prev" title="上一个">↑</button>
+      <button id="search-next" title="下一个">↓</button>
+      <button id="replace-one" hidden>替换</button>
+      <button id="replace-all" hidden>全部替换</button>
+      <button id="search-close" title="关闭">×</button>
+    </div>
+
     <div id="main-content">
+      <aside id="outline-panel" hidden>
+        <div class="outline-header">
+          <span>文档大纲</span>
+          <button id="outline-close" title="关闭">×</button>
+        </div>
+        <div id="outline-list"></div>
+      </aside>
       <div id="editor-pane">
         <textarea id="editor" placeholder="在此输入 Markdown..."></textarea>
       </div>
       <div id="resizer"></div>
       <div id="preview-pane">
         <div id="preview" class="markdown-body"></div>
+        <div id="table-toolbar" class="table-toolbar" hidden>
+          <div id="table-toolbar-location" class="table-toolbar-location">第 1 行 · 第 1 列</div>
+          <div class="table-toolbar-group">
+            <span>行</span>
+            <button data-table-action="row-before" title="在当前行前插入">前插</button>
+            <button data-table-action="row-after" title="在当前行后插入">后插</button>
+            <button data-table-action="delete-row" title="删除当前行">删除</button>
+          </div>
+          <div class="table-toolbar-group">
+            <span>列</span>
+            <button data-table-action="column-before" title="在当前列左侧插入">左插</button>
+            <button data-table-action="column-after" title="在当前列右侧插入">右插</button>
+            <button data-table-action="delete-column" title="删除当前列">删除</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <div id="statusbar">
       <span id="status-file">未命名.md</span>
+      <span class="status-separator">|</span>
+      <span id="status-characters">字符: 0</span>
+      <span class="status-separator">|</span>
+      <span id="status-chinese">中文: 0</span>
       <span class="status-separator">|</span>
       <span id="status-words">单词: 0</span>
       <span class="status-separator">|</span>
@@ -75,6 +124,7 @@
       <span id="status-autosave"></span>
       <span class="status-separator">|</span>
       <span id="status-encoding">UTF-8</span>
+      <span id="status-export"></span>
       <span class="status-separator">|</span>
       <span id="status-modified"></span>
     </div>
@@ -110,17 +160,81 @@
   <div id="about-overlay" class="modal-overlay" style="display:none">
     <div class="about-dialog">
       <div class="about-name">WuMark - 无码</div>
-      <div class="about-version">v1.1.0</div>
+      <div class="about-version">v1.5.0</div>
       <div class="about-desc">无干扰 · 极简 Markdown 编辑器</div>
       <div class="about-divider"></div>
       <div class="about-info">
-        <div class="about-info-row"><span class="about-label">技术栈</span><span class="about-value">Electron + marked + highlight.js</span></div>
+        <div class="about-info-row"><span class="about-label">技术栈</span><span class="about-value">Electron + CodeMirror + marked + KaTeX</span></div>
         <div class="about-info-row"><span class="about-label">开发者</span><span class="about-value">wushaozhi</span></div>
         <div class="about-info-row"><span class="about-label">许可证</span><span class="about-value">MIT License</span></div>
       </div>
       <div class="about-buttons">
         <button class="modal-btn modal-btn-primary" id="about-close-btn">关闭</button>
       </div>
+    </div>
+  </div>
+
+  <div id="syntax-help-overlay" class="modal-overlay" style="display:none">
+    <div class="syntax-help-dialog">
+      <div class="syntax-help-header">
+        <div>
+          <div class="syntax-help-title">Markdown 语法帮助</div>
+          <div class="syntax-help-subtitle">CommonMark + GFM + emoji + KaTeX</div>
+        </div>
+        <button id="syntax-help-close" class="syntax-help-close" title="关闭">×</button>
+      </div>
+      <div class="syntax-help-content">
+        <section>
+          <h3>基础排版</h3>
+          <div class="syntax-grid">
+            <code># 标题 1</code><span>一级至六级标题</span>
+            <code>**粗体** / *斜体*</code><span>强调文本</span>
+            <code>~~删除线~~</code><span>GFM 删除线</span>
+            <code>`行内代码`</code><span>行内代码</span>
+            <code>&gt; 引用</code><span>块引用，可嵌套</span>
+            <code>---</code><span>分隔线</span>
+          </div>
+        </section>
+        <section>
+          <h3>列表与任务</h3>
+          <div class="syntax-grid">
+            <code>- 项目</code><span>无序列表</span>
+            <code>1. 项目</code><span>有序列表</span>
+            <code>- [ ] 待办</code><span>GFM 任务列表</span>
+          </div>
+        </section>
+        <section>
+          <h3>链接、图片与表格</h3>
+          <div class="syntax-grid">
+            <code>[文字](https://example.com)</code><span>链接与自动链接</span>
+            <code>![说明](image.png)</code><span>网络、本地和 data 图片</span>
+            <code>| 标题 | 标题 |</code><span>GFM 表格，悬停可增删行列</span>
+          </div>
+        </section>
+        <section>
+          <h3>代码、表情与公式</h3>
+          <div class="syntax-grid">
+            <code>```javascript</code><span>围栏代码块与语法高亮</span>
+            <code>😄 或 :smile:</code><span>Unicode emoji 与 GitHub 风格短码</span>
+            <code>$E = mc^2$</code><span>KaTeX 行内公式</span>
+            <code>$$\int_0^1 x^2 dx$$</code><span>KaTeX 块级公式</span>
+          </div>
+        </section>
+        <section>
+          <h3>兼容范围</h3>
+          <p>支持 CommonMark 与 GitHub Flavored Markdown 的标题、段落、换行、转义、HTML、列表、任务、链接、图片、表格、引用、代码及删除线，并扩展 emoji 和 KaTeX。脚注、定义列表、Mermaid 等属于其他方言，当前不解析。</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="selection-stats" class="selection-stats" hidden>
+    <div class="selection-stats-title">已选文本</div>
+    <div class="selection-stats-values">
+      <span id="selection-stat-lines">行 0</span>
+      <span id="selection-stat-characters">字符 0</span>
+      <span id="selection-stat-chinese">中文 0</span>
+      <span id="selection-stat-words">单词 0</span>
     </div>
   </div>
 

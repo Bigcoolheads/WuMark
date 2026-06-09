@@ -594,12 +594,12 @@
   <section id="hero">
     <div class="container hero-content">
       <div class="hero-text">
-        <div class="badge">v1.1.0 · 2026</div>
+        <div class="badge">v1.5.0 · 2026</div>
         <h1>WuMark <span>· 无码</span></h1>
         <p class="subtitle">无干扰 · 极简 Markdown 编辑器</p>
         <p class="desc">
-          基于 Electron 构建的桌面 Markdown 编辑器，拥有双栏实时预览、三种视图模式、
-          语法高亮、图片拖拽粘贴等特性。单文件便携免安装。
+          基于 Electron 构建的桌面 Markdown 编辑器，拥有所见即所得实时预览、双栏预览、四种视图模式、
+          公式与 emoji、查找替换、文档大纲、精确表格操作和文本统计等特性。单文件便携免安装。
         </p>
         <div class="hero-actions">
           <a href="#download" class="btn btn-primary">
@@ -628,39 +628,24 @@
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">◫</div>
-          <h3>双栏实时预览</h3>
-          <p>左侧编辑右侧渲染，输入即所见。支持拖拽调节分栏比例。</p>
+          <h3>实时预览</h3>
+          <p>在同一编辑区直接显示标题、强调、引用、列表和代码样式，所见即所得。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">✎</div>
-          <h3>三种视图模式</h3>
-          <p>编辑 / 预览 / 双栏，一键切换，适应不同写作场景。</p>
+          <h3>四种视图模式</h3>
+          <p>实时预览 / 编辑 / 预览 / 双栏，一键切换，适应不同写作场景。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📦</div>
           <h3>单文件便携</h3>
           <p>打包为单个 exe，无需安装，开箱即用。支持 .md 文件关联。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">💾</div>
-          <h3>自动保存</h3>
-          <p>文件菜单中开启自动保存，不再丢失内容。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>关闭保护</h3>
-          <p>未保存时弹出自定义对话框，提供保存 / 丢弃 / 取消三个选项。</p>
-        </div>
+        </div>        
         <div class="feature-card">
           <div class="feature-icon">🌓</div>
           <h3>深/浅色模式</h3>
           <p>支持深色与浅色主题切换，保护视力，适配不同环境光线。</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">⌨</div>
-          <h3>快捷键支持</h3>
-          <p>Ctrl+S 保存、Ctrl+O 打开、Ctrl+N 新建、工具栏一键插入语法。</p>
-        </div>
+        </div>        
         <div class="feature-card">
           <div class="feature-icon">🎨</div>
           <h3>语法高亮</h3>
@@ -670,6 +655,36 @@
           <div class="feature-icon">📑</div>
           <h3>多标签页</h3>
           <p>同时打开多个文件，标签栏一键切换。重复文件自动定位已有标签。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">∑</div>
+          <h3>公式与 Emoji</h3>
+          <p>支持 KaTeX 行内/块级数学公式、Unicode emoji 和 :shortcode: 短码。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⌕</div>
+          <h3>查找与替换</h3>
+          <p>全文匹配计数、上下导航、大小写敏感、逐项替换和全部替换。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">☷</div>
+          <h3>文档大纲</h3>
+          <p>按标题层级生成导航，点击跳转并高亮当前正在编辑或预览的章节。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⊞</div>
+          <h3>精确表格操作</h3>
+          <p>定位当前单元格，在行前后或列左右插入，并精准删除当前行列。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">字</div>
+          <h3>全文与选区统计</h3>
+          <p>分别统计字符、中文和单词，多行选区即时显示局部统计。</p>
+        </div>        
+        <div class="feature-card">
+          <div class="feature-icon">⇩</div>
+          <h3>多格式导出</h3>
+          <p>将渲染后的 Markdown 文档导出为独立 HTML、PDF 或完整 PNG 长图。</p>
         </div>
       </div>
     </div>
@@ -778,11 +793,11 @@
           <div class="icon">📥</div>
           <h3>便携版下载</h3>
           <p>单文件 exe，下载后双击即可运行，无需安装。</p>
-          <a href="https://github.com/Bigcoolheads/WuMark/releases/download/v1.1.0/WuMark.exe" download="WuMark.exe" class="btn btn-primary">
+          <a href="https://github.com/Bigcoolheads/WuMark/releases/download/v1.5.0/WuMark.exe" download="WuMark.exe" class="btn btn-primary">
             下载 WuMark.exe
           </a>
           <p style="margin-top:10px;font-size:12px;color:var(--slate-400)">
-            国内加速: <a href="https://ghproxy.com/https://github.com/Bigcoolheads/WuMark/releases/download/v1.1.0/WuMark.exe" download="WuMark.exe" style="color:var(--cyan)">镜像下载</a>
+            国内加速: <a href="https://ghproxy.com/https://github.com/Bigcoolheads/WuMark/releases/download/v1.5.0/WuMark.exe" download="WuMark.exe" style="color:var(--cyan)">镜像下载</a>
             &nbsp;·&nbsp; <a href="https://github.com/Bigcoolheads/WuMark/releases" style="color:var(--cyan)">Release 页</a>
           </p>
         </div>
@@ -817,17 +832,21 @@
           <div class="role">运行时</div>
         </div>
         <div class="tech-item">
+          <div class="name">CodeMirror 5</div>
+          <div class="role">编辑与实时渲染</div>
+        </div>
+        <div class="tech-item">
           <div class="name">marked 15</div>
           <div class="role">Markdown 解析</div>
         </div>
         <div class="tech-item">
-          <div class="name">highlight.js 11</div>
-          <div class="role">语法高亮</div>
+          <div class="name">KaTeX</div>
+          <div class="role">数学公式渲染</div>
         </div>
         <div class="tech-item">
-          <div class="name">electron-builder</div>
-          <div class="role">打包分发</div>
-        </div>
+          <div class="name">highlight.js 11</div>
+          <div class="role">语法高亮</div>
+        </div>        
       </div>
     </div>
   </section>
@@ -837,7 +856,7 @@
     <div class="container">
       <p>
         <a href="https://github.com/Bigcoolheads/WuMark" target="_blank" rel="noopener">WuMark (无码)</a>
-        &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; 2026 wushaozhi
+        &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; 2026 吴绍治
       </p>
     </div>
   </footer>
